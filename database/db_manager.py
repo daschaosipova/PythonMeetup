@@ -36,7 +36,8 @@ def init_db():
             ],
             "current_speaker_id": None,
             "current_event_id": 1,
-            "questions": []
+            "questions": [],
+            "applications": []
         }
         write_db(default_data)
 
@@ -90,6 +91,17 @@ def add_question(user_id: int, user_name: str, text: str):
         "speaker_id": db.get("current_speaker_id")
     }
     db["questions"].append(new_q)
+    write_db(db)
+
+def add_application(user_id: int, user_name: str, text: str):
+    """Сохраняет запрос на выступление в общую базу данных."""
+    db = read_db()
+    new_application = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "text": text
+    }
+    db["applications"].append(new_application)
     write_db(db)
 
 def get_questions_for_speaker(speaker_id: int) -> list:
