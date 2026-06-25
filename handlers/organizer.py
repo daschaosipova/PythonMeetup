@@ -1,3 +1,4 @@
+import os
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.filters import Command
@@ -5,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from database import db_manager
 
-ORGANIZER_ID
+ORGANIZER_ID = os.getenv("ORGANIZER_ID")
 router = Router()
 
 
@@ -20,6 +21,7 @@ class OrganizerStates(StatesGroup):
 def get_organizer_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="📝 Список заявок")],
             [KeyboardButton(text="➕ Добавить событие"), KeyboardButton(text="👤 Назначить спикера")]
         ],
         resize_keyboard=True
