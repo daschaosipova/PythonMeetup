@@ -1,5 +1,5 @@
 import os
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -135,7 +135,7 @@ async def process_time(message: Message, state: FSMContext):
         )
 
         await message.answer(f"✅ Перерыв [{user_data['time_slot']}] успешно добавлен!",
-                             reply_markup=ReplyKeyboardRemove())
+                             reply_markup=get_organizer_keyboard())
         await state.clear()
     else:
         # Если это доклад, идем дальше запрашивать спикера
@@ -167,30 +167,56 @@ async def process_speaker_id(message: Message, state: FSMContext):
 
 # --- 6. Получение темы и финальное сохранение доклада
 @router.message(OrganizerStates.waiting_topic)
-async def process_topic(message: Message, state: FSMContext):
+async def process_topic(message: Message, state: FSMContext, bot: Bot):
     user_data = await state.get_data()
     db = db_manager.read_db()
     next_number = len(db.get("talks", [])) + 1
+    speaker_id = user_data['speaker_id']
 
     # Сохраняем доклад в JSON
     db_manager.add_talk_to_schedule(
         number=next_number,
         time_slot=user_data['time_slot'],
         speaker_name=user_data['speaker_name'],
-        speaker_id=user_data['speaker_id'],
+        speaker_id=speaker_id,
         topic=message.text,
         is_break=False
     )
 
     text = (
         f"✅ Доклад успешно добавлен!\n\n"
-        f"№ {next_number}. {user_data['speaker_name']} — {message.text} ({user_data['time_slot']})"
+        f"№ {next_number}. {user_data['speaker_name']} — {message.text} ({user_data['time_slot']})",
+        f"Telegram ID спикера: {speaker_id}"
     )
-    await message.answer(text, reply_markup=ReplyKeyboardRemove())
+    # --- ОТПРАВКА УВЕДОМЛЕНИЯ ПОЛЬЗОВАТЕЛЮ ---
+    if speaker_id:  # Проверяем, что ID был введен и он не равен None/0
+        try:
+            text_for_speaker = (
+                f"🎉 Здравствуйте, {user_data['speaker_name']}!\n\n"
+                f"Организатор добавил вас в расписание мероприятия.\n"
+                f"⏰ **Ваш тайм-слот:** {user_data['time_slot']}\n"
+                f"📘 **Тема доклада:** {message.text}\n\n"
+                f"Пожалуйста, будьте готовы к вашему выступлению!"
+            )
+            # Отправляем сообщение напрямую пользователю по его ID
+            await bot.send_message(chat_id=speaker_id, text=text_for_speaker, parse_mode="Markdown")
+            text_for_admin += "\n\n🔔 Пользователь успешно уведомлен в ЛС!"
+            
+        except TelegramForbiddenError:
+            # Пользователь заблокировал бота или никогда его не запускал
+            text_for_admin += "\n\n⚠️ Не удалось уведомить: пользователь заблокировал бота."
+        except TelegramBadRequest:
+            # Неверный ID или пользователя не существует
+            text_for_admin += "\n\n⚠️ Не удалось уведомить: неверный Telegram ID."
+        except Exception as e:
+            text_for_admin += f"\n\n⚠️ Ошибка отправки уведомления: {e}"
+
+    # Отвечаем администратору
+    await message.answer(text, reply_markup=get_organizer_keyboard())
     await state.clear()
 
 
-# --- Сценарий назначения спикера ---
+# --- Сценарий назначения спикера (чтобы бот знал, кто сейчас выступает на сцене) ---
 @router.message(F.text == "👤 Назначить спикера")
 async def set_speaker_start(message: Message, state: FSMContext):
     if message.from_user.id != ORGANIZER_ID: return
@@ -211,7 +237,6 @@ async def set_speaker_finish(message: Message, state: FSMContext):
             await message.answer("❌ Пожалуйста, введите корректный числовой ID.")
             return
 
-    # Вызываем функцию Разработчика 1
     db_manager.set_speaker(user_id=speaker_id, event_id=1)
     await message.answer(f"✅ Спикер с ID {speaker_id} успешно назначен на сцену!")
     await state.clear()
