@@ -83,7 +83,7 @@ async def start_add_talk(message: Message, state: FSMContext):
 
 
 # --- Обработка кнопки "Отмена" на любом шаге
-@router.message(F.text == "❌ Отмена", state="*")
+@router.message(F.text == "❌ Отмена")
 async def cancel_action(message: Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
