@@ -14,6 +14,7 @@ class OrganizerStates(StatesGroup):
     choosing_type = State()  # Выбор: доклад или перерыв
     waiting_time = State()  # Ожидание времени (например, 12:00-13:00)
     waiting_speaker = State()  # Ожидание ФИО (только для докладов)
+    waiting_add_talk_speaker_id = State() # Ожидание Telegram ID (только для докладов)
     waiting_topic = State()  # Ожидание темы (только для докладов)
     waiting_for_speaker_id = State()
 
@@ -127,7 +128,6 @@ async def process_time(message: Message, state: FSMContext):
         # Автоматически вычисляем следующий порядковый номер
         next_number = len(db.get("talks", [])) + 1
 
-        # Вызываем вашу функцию из модуля БД
         db_manager.add_talk_to_schedule(
             number=next_number,
             time_slot=user_data['time_slot'],
@@ -151,18 +151,33 @@ async def process_speaker(message: Message, state: FSMContext):
     await state.set_state(OrganizerStates.waiting_topic)
 
 
-# --- 5. Получение темы и финальное сохранение доклада
+# --- 5. Получение Telegram ID спикера (только для доклада)
+@router.message(OrganizerStates.waiting_add_talk_speaker_id)
+async def process_speaker_id(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("Ошибка! ID должен состоять только из цифр. Попробуйте еще раз:")
+        return
+
+    speaker_id = int(message.text)
+    speaker_id = None if speaker_id == 0 else speaker_id
+
+    await state.update_data(speaker_id=speaker_id)
+    await message.answer("Введите тему доклада:")
+    await state.set_state(OrganizerStates.waiting_topic)
+
+# --- 6. Получение темы и финальное сохранение доклада
 @router.message(OrganizerStates.waiting_topic)
 async def process_topic(message: Message, state: FSMContext):
     user_data = await state.get_data()
     db = db_manager.read_db()
     next_number = len(db.get("talks", [])) + 1
 
-    # Сохраняем доклад в JSON через вашу функцию
+    # Сохраняем доклад в JSON
     db_manager.add_talk_to_schedule(
         number=next_number,
         time_slot=user_data['time_slot'],
         speaker_name=user_data['speaker_name'],
+        speaker_id=user_data['speaker_id'],
         topic=message.text,
         is_break=False
     )
