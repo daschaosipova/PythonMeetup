@@ -17,13 +17,15 @@ class OrganizerStates(StatesGroup):
     waiting_add_talk_speaker_id = State() # Ожидание Telegram ID (только для докладов)
     waiting_topic = State()  # Ожидание темы (только для докладов)
     waiting_for_speaker_id = State()
+    waiting_for_confirmation = State() #Ожидание подтверждения очистки расписания
 
 
 def get_organizer_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="📝🎤 Список заявок")],
-            [KeyboardButton(text="➕ Добавить событие"), KeyboardButton(text="👤 Назначить спикера")]
+            [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="👤 Назначить спикера")],
+            [KeyboardButton(text="➕ Добавить событие"), KeyboardButton(text="➖ Удалить событие")],
+            [KeyboardButton(text="📝🎤 Список заявок"), KeyboardButton(text="🧹 Очистить расписание")]
         ],
         resize_keyboard=True
     )
@@ -35,6 +37,15 @@ def get_type_keyboard():
         keyboard=[
             [KeyboardButton(text="Доклад"), KeyboardButton(text="Перерыв/Обед")],
             [KeyboardButton(text="❌ Отмена")]
+        ],
+        resize_keyboard=True
+    )
+
+# Клавиатура подтверждения очистки расписания
+def get_confirmation_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Нет! Передумал"), KeyboardButton(text="Да! Удаляй всё")]
         ],
         resize_keyboard=True
     )
@@ -66,20 +77,6 @@ async def show_applications(message: Message):
     for i, a in enumerate(applications, 1):
         text += f"{i}. От {a['user_name']}, id - {a['user_id']}:\n— {a['text']}\n\n"
     await message.answer(text)
-
-
-# --- 1. Старт сценария (Доступно только админу по команде /add)
-@router.message(Command("add"))
-async def start_add_talk(message: Message, state: FSMContext):
-    if message.from_user.id != ORGANIZER_ID:
-        await message.answer("У вас нет прав для выполнения этой команды.")
-        return
-
-    await message.answer(
-        "Что вы хотите добавить в расписание?",
-        reply_markup=get_type_keyboard()
-    )
-    await state.set_state(OrganizerStates.choosing_type)
 
 
 # --- Обработка кнопки "Отмена" на любом шаге
@@ -156,8 +153,8 @@ async def process_time(message: Message, state: FSMContext):
 @router.message(OrganizerStates.waiting_speaker)
 async def process_speaker(message: Message, state: FSMContext):
     await state.update_data(speaker_name=message.text)
-    await message.answer("Введите тему доклада:")
-    await state.set_state(OrganizerStates.waiting_topic)
+    await message.answer("Введите Telegram ID спикера:")
+    await state.set_state(OrganizerStates.waiting_add_talk_speaker_id)
 
 
 # --- 5. Получение Telegram ID спикера (только для доклада)
@@ -247,6 +244,38 @@ async def set_speaker_finish(message: Message, state: FSMContext):
             return
 
     db_manager.set_speaker(user_id=speaker_id, event_id=1)
-    await message.answer(f"✅ Спикер с ID {speaker_id} успешно назначен на сцену!")
+    await message.answer(
+        f"✅ Спикер с ID {speaker_id} успешно назначен на сцену!",
+        reply_markup=get_organizer_keyboard()
+    )
+    await state.clear()
+
+
+# --- Старт сценария "Очистить расписание"
+@router.message(F.text == "🧹 Очистить расписание")
+async def start_delete_all(message: Message, state: FSMContext):
+
+    await message.answer(
+        "Вы действительно хотите очистить всё расписание?",
+        reply_markup=get_confirmation_keyboard()
+    )
+    await state.set_state(OrganizerStates.waiting_for_confirmation)
+
+@router.message(OrganizerStates.waiting_for_confirmation, F.text.in_(["Нет! Передумал", "Да! Удаляй всё"]))
+async def process_confirmation(message: Message, state: FSMContext):
+    if message.text == "Нет! Передумал":
+        await message.answer(
+            "Действие отменено. Расписание не тронуто.",
+            reply_markup=get_organizer_keyboard()
+        )
+        await state.clear()
+        return
+
+    if message.text == "Да! Удаляй всё":
+        db_manager.clear_schedule()
+        await message.answer(
+            "🧹Расписание успешно очищено!🧹",
+            reply_markup=get_organizer_keyboard()
+        )
     await state.clear()
 
