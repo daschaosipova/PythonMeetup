@@ -175,3 +175,8 @@ def get_current_speaker_id():
     """Возвращает ID текущего спикера на сцене (для проверки прав)."""
     db = read_db()
     return db.get("current_speaker_id")
+
+def get_applications():
+    db = read_db()
+    applications = db.get("applications", [])
+    return applications
