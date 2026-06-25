@@ -97,6 +97,21 @@ def get_questions_for_speaker(speaker_id: int) -> list:
     db = read_db()
     return [q for q in db["questions"] if q["speaker_id"] == speaker_id]
 
+def log_donation(user_id: int, user_name: str, amount: int):
+    """Сохраняет информацию о сделанном донате в db.json."""
+    db = read_db()
+    
+    # Инициализируем список донатов, если его еще нет в файле
+    if "donations" not in db:
+        db["donations"] = []
+        
+    db["donations"].append({
+        "user_id": user_id,
+        "user_name": user_name,
+        "amount": amount
+    })
+    write_db(db)
+
 # --- Функции для Разработчика 3 (Организатор) ---
 
 def add_talk_to_schedule(number: int, time_slot: str, speaker_name: str = None, topic: str = None, speaker_id: int = None, is_break: bool = False):
