@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from database import db_manager
 
-ORGANIZER_ID = os.getenv("ORGANIZER_ID")
+ORGANIZER_ID = int(os.getenv("ORGANIZER_ID"))
 router = Router()
 
 
