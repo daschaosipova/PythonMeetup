@@ -21,7 +21,7 @@ class OrganizerStates(StatesGroup):
 def get_organizer_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="📝 Список заявок")],
+            [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="📝🎤 Список заявок")],
             [KeyboardButton(text="➕ Добавить событие"), KeyboardButton(text="👤 Назначить спикера")]
         ],
         resize_keyboard=True
@@ -53,6 +53,18 @@ async def cmd_admin(message: Message):
 async def show_schedule(message: Message):
     schedule_text = db_manager.get_schedule()
     await message.answer(schedule_text, parse_mode="Markdown")
+
+@router.message(F.text == "📝🎤 Список заявок")
+async def show_applications(message: Message):
+    applications = db_manager.get_applications()
+    if not applications:
+        await message.answer("Пока никто не подал заявок на выступление.")
+        return
+
+    text = "📥🎤 Заявки на выступление:\n\n"
+    for i, a in enumerate(applications, 1):
+        text += f"{i}. От {a['user_name']}, id - {a['user_id']}:\n— {a['text']}\n\n"
+    await message.answer(text)
 
 
 # --- 1. Старт сценария (Доступно только админу по команде /add)
