@@ -83,10 +83,19 @@ async def start_add_talk(message: Message, state: FSMContext):
 
 
 # --- Обработка кнопки "Отмена" на любом шаге
-@router.message(F.text == "❌ Отмена")
+@router.message(F.text == "❌ Отмена", state="*")
 async def cancel_action(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Действие отменено.", reply_markup=ReplyKeyboardRemove())
+    current_state = await state.get_state()
+    if current_state is None:
+        # Если организатор нажал отмену вне сценария, просто возвращаем меню
+        await message.answer("Нет активных действий для отмены.", reply_markup=get_organizer_keyboard())
+        return
+
+    await state.clear()  # Сбрасываем сохраненные данные и состояние
+    await message.answer(
+        "Действие отменено.", 
+        reply_markup=get_organizer_keyboard()
+    )
 
 
 # --- 1. Старт сценария добавления события ---
