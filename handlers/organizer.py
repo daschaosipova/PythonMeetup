@@ -49,6 +49,12 @@ async def cmd_admin(message: Message):
     await message.answer("🛠 Добро пожаловать в панель Организатора!", reply_markup=get_organizer_keyboard())
 
 
+@router.message(F.text == "📜 Расписание")
+async def show_schedule(message: Message):
+    schedule_text = db_manager.get_schedule()
+    await message.answer(schedule_text, parse_mode="Markdown")
+
+
 # --- 1. Старт сценария (Доступно только админу по команде /add)
 @router.message(Command("add"))
 async def start_add_talk(message: Message, state: FSMContext):
