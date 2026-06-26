@@ -180,3 +180,27 @@ def get_applications():
     db = read_db()
     applications = db.get("applications", [])
     return applications
+
+def delete_talk_by_number(number: int) -> bool:
+    """Удаляет событие по его номеру и обновляет нумерацию остальных элементов."""
+    db = read_db()
+    talks = db.get("talks", [])
+    
+    # Ищем, есть ли вообще событие с таким номером
+    initial_length = len(talks)
+    
+    # Фильтруем список, оставляя только те элементы, чей номер НЕ совпадает с удаляемым
+    talks = [talk for talk in talks if talk.get("number") != number]
+    
+    # Если размер списка не изменился, значит события с таким номером не было
+    if len(talks) == initial_length:
+        return False
+        
+    # Пересчитываем номера по порядку (1, 2, 3...), чтобы после удаления не было пропусков
+    for index, talk in enumerate(talks, 1):
+        talk["number"] = index
+        
+    # Записываем обновленный список обратно в базу
+    db["talks"] = talks
+    write_db(db)
+    return True

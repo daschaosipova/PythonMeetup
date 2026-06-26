@@ -1,6 +1,7 @@
 import os
 from aiogram import Router, F, Bot
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -17,7 +18,8 @@ class OrganizerStates(StatesGroup):
     waiting_add_talk_speaker_id = State() # Ожидание Telegram ID (только для докладов)
     waiting_topic = State()  # Ожидание темы (только для докладов)
     waiting_for_speaker_id = State()
-    waiting_for_confirmation = State() #Ожидание подтверждения очистки расписания
+    waiting_for_confirmation = State() # Ожидание подтверждения очистки расписания
+    waiting_for_delete_number = State() # Ожидание номера доклада на удаление
 
 
 def get_organizer_keyboard():
@@ -207,6 +209,7 @@ async def process_topic(message: Message, state: FSMContext, bot: Bot):
             # Отправляем сообщение напрямую пользователю по его ID
             await bot.send_message(chat_id=speaker_id, text=text_for_speaker, parse_mode="Markdown")
             text_for_admin += "\n\n🔔 Пользователь успешно уведомлен в ЛС!"
+            await state.clear()
             
         except TelegramForbiddenError:
             # Пользователь заблокировал бота или никогда его не запускал
@@ -279,3 +282,38 @@ async def process_confirmation(message: Message, state: FSMContext):
         )
     await state.clear()
 
+# --- Старт сценария "Удалить событие" ---
+@router.message(F.text == "➖ Удалить событие")
+async def start_delete_talk(message: Message, state: FSMContext):
+    if message.from_user.id != ORGANIZER_ID:
+        return
+
+    # Показываем текущее расписание, чтобы админ видел номера
+    schedule_text = db_manager.get_schedule()
+    await message.answer(f"{schedule_text}\n\n🔢 Введите **номер** доклада, который нужно удалить:", parse_mode="Markdown")
+    
+    # Переводим в состояние ожидания ввода цифры
+    await state.set_state(OrganizerStates.waiting_for_delete_number)
+
+
+# --- Обработка ввода номера для удаления ---
+@router.message(OrganizerStates.waiting_for_delete_number)
+async def process_delete_talk(message: Message, state: FSMContext):
+    # Проверяем, что пользователь ввел именно число
+    if not message.text.isdigit():
+        await message.answer("❌ Пожалуйста, введите корректное число (номер доклада).")
+        return
+
+    target_number = int(message.text)
+    
+    # Вызываем функцию удаления из бд
+    success = db_manager.delete_talk_by_number(target_number)
+    
+    if success:
+        await message.answer(
+            f"✅ Событие №{target_number} успешно удалено. Номера остальных событий обновлены.",
+            reply_markup=get_organizer_keyboard()
+        )
+        await state.clear()  # Сбрасываем состояние
+    else:
+        await message.answer(f"❌ Событие с номером {target_number} не найдено. Попробуйте еще раз:")
