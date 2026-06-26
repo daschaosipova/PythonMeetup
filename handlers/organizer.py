@@ -20,6 +20,7 @@ class OrganizerStates(StatesGroup):
     waiting_for_speaker_id = State()
     waiting_for_confirmation = State() # Ожидание подтверждения очистки расписания
     waiting_for_delete_number = State() # Ожидание номера доклада на удаление
+    waiting_broadcast_text = State()
 
 
 def get_organizer_keyboard():
@@ -27,7 +28,8 @@ def get_organizer_keyboard():
         keyboard=[
             [KeyboardButton(text="📜 Расписание"), KeyboardButton(text="👤 Назначить спикера")],
             [KeyboardButton(text="➕ Добавить событие"), KeyboardButton(text="➖ Удалить событие")],
-            [KeyboardButton(text="📝🎤 Список заявок"), KeyboardButton(text="🧹 Очистить расписание")]
+            [KeyboardButton(text="📝🎤 Список заявок"), KeyboardButton(text="🧹 Очистить расписание")],
+            [KeyboardButton(text="📢 Оповестить участников")]
         ],
         resize_keyboard=True
     )
@@ -317,3 +319,61 @@ async def process_delete_talk(message: Message, state: FSMContext):
         await state.clear()  # Сбрасываем состояние
     else:
         await message.answer(f"❌ Событие с номером {target_number} не найдено. Попробуйте еще раз:")
+
+
+@router.message(F.text == "📢 Оповестить участников")
+async def start_broadcast(message: Message, state: FSMContext):
+    if message.from_user.id != ORGANIZER_ID:
+        return
+
+    await message.answer(
+        "Введите текст оповещения, который нужно отправить всем участникам:",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="❌ Отмена")]],
+            resize_keyboard=True
+        )
+    )
+
+    await state.set_state(OrganizerStates.waiting_broadcast_text)
+
+
+@router.message(OrganizerStates.waiting_broadcast_text)
+async def process_broadcast(message: Message, state: FSMContext, bot: Bot):
+    if message.from_user.id != ORGANIZER_ID:
+        return
+
+    users = db_manager.get_all_users()
+
+    if not users:
+        await message.answer(
+            "Пока нет участников для рассылки. Пользователи должны сначала нажать /start.",
+            reply_markup=get_organizer_keyboard()
+        )
+        await state.clear()
+        return
+
+    text = f"📢 Оповещение от организатора:\n\n{message.text}"
+
+    sent_count = 0
+    failed_count = 0
+
+    for user in users:
+        user_id = user["user_id"]
+
+        if user_id == ORGANIZER_ID:
+            continue
+
+        try:
+            await bot.send_message(chat_id=user_id, text=text)
+            sent_count += 1
+        except Exception:
+            failed_count += 1
+
+    await message.answer(
+        f"✅ Рассылка завершена.\n\n"
+        f"Отправлено: {sent_count}\n"
+        f"Ошибок: {failed_count}",
+        reply_markup=get_organizer_keyboard()
+    )
+
+    await state.clear()

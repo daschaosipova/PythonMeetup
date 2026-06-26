@@ -25,6 +25,12 @@ def get_listener_keyboard():
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
+    db_manager.add_user(
+        user_id=message.from_user.id,
+        user_name=message.from_user.full_name,
+        username=message.from_user.username
+    )
+
     await message.answer(
         f"Привет, {message.from_user.full_name}! Добро пожаловать на наше мероприятие.\n"
         f"Используйте меню ниже для навигации.",

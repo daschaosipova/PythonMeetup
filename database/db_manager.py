@@ -37,7 +37,8 @@ def init_db():
             "current_speaker_id": None,
             "current_event_id": 1,
             "questions": [],
-            "applications": []
+            "applications": [],
+            "users": []
         }
         write_db(default_data)
 
@@ -204,3 +205,25 @@ def delete_talk_by_number(number: int) -> bool:
     db["talks"] = talks
     write_db(db)
     return True
+
+def add_user(user_id: int, user_name: str, username: str | None):
+    db = read_db()
+
+    if "users" not in db:
+        db["users"] = []
+
+    for user in db["users"]:
+        if user["user_id"] == user_id:
+            return
+
+    db["users"].append({
+        "user_id": user_id,
+        "user_name": user_name,
+        "username": username
+    })
+
+    write_db(db)
+
+def get_all_users() -> list:
+    db = read_db()
+    return db.get("users", [])
