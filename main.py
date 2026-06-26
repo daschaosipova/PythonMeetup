@@ -10,7 +10,7 @@ from handlers import listener, speaker, organizer
 from database import db_manager
 
 
-ORGANIZER_ID = os.getenv("ORGANIZER_ID")
+ORGANIZER_ID = int(os.getenv("ORGANIZER_ID"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Включаем логирование, чтобы видеть ошибки в консоли

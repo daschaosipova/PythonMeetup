@@ -56,7 +56,9 @@ def get_confirmation_keyboard():
 
 
 @router.message(Command("admin"))
-async def cmd_admin(message: Message):
+async def cmd_admin(message: Message, state: FSMContext):
+    await state.clear()
+
     # Проверка прав доступа организатора
     if message.from_user.id != ORGANIZER_ID:
         await message.answer("❌ У вас нет прав доступа к этой команде.")
