@@ -20,7 +20,7 @@ class OrganizerStates(StatesGroup):
     waiting_for_speaker_id = State()
     waiting_for_confirmation = State() # Ожидание подтверждения очистки расписания
     waiting_for_delete_number = State() # Ожидание номера доклада на удаление
-    waiting_broadcast_text = State()
+    waiting_broadcast_text = State() # Ввод текста оповещения для рассылки
 
 
 def get_organizer_keyboard():
