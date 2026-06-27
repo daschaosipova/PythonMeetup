@@ -7,33 +7,7 @@ def init_db():
     """Создает базовую структуру db.json, если файла нет."""
     if not os.path.exists(DB_FILE):
         default_data = {
-            # Расписание — это структурированный список докладов
-            "talks": [
-                {
-                    "number": 1,
-                    "is_break": False,
-                    "time_slot": "10:00 - 10:45",
-                    "speaker_name": "Иванов Иван Иванович",
-                    "topic": "Введение в AI и нейросети",
-                    "speaker_id": 101  # Telegram ID спикера для связи с вопросами
-                },
-                {
-                    "number": 2,
-                    "is_break": False,
-                    "time_slot": "11:00 - 11:45",
-                    "speaker_name": "Петров Петр Петрович",
-                    "topic": "Разработка ботов на aiogram 3",
-                    "speaker_id": 202
-                },
-                {
-                    "number": 3,
-                    "is_break": True,
-                    "time_slot": "12:00 - 12:45",
-                    "speaker_name": None,
-                    "topic": None,
-                    "speaker_id": None
-                }
-            ],
+            "talks": [],
             "current_speaker_id": None,
             "current_event_id": 1,
             "questions": [],
@@ -125,9 +99,14 @@ def log_donation(user_id: int, user_name: str, amount: int):
     })
     write_db(db)
 
-# --- Функции для Разработчика 3 (Организатор) ---
-
-def add_talk_to_schedule(number: int, time_slot: str, speaker_name: str = None, topic: str = None, speaker_id: int = None, is_break: bool = False):
+def add_talk_to_schedule(
+    number: int, 
+    time_slot: str,
+    speaker_name: str = None,
+    topic: str = None,
+    speaker_id: int = None,
+    is_break: bool = False
+):
     """
     Добавляет новый элемент в расписание. 
     Если is_break=True, то это технический перерыв (обед, кофе-брейк).
