@@ -195,9 +195,9 @@ async def process_topic(message: Message, state: FSMContext, bot: Bot):
         is_break=False
     )
 
-    text = (
+    text_for_admin = (
         f"✅ Доклад успешно добавлен!\n\n"
-        f"№ {next_number}. {user_data['speaker_name']} — {message.text} ({user_data['time_slot']})",
+        f"№ {next_number}. {user_data['speaker_name']} — {message.text} ({user_data['time_slot']})\n"
         f"Telegram ID спикера: {speaker_id}"
     )
     # --- ОТПРАВКА УВЕДОМЛЕНИЯ ПОЛЬЗОВАТЕЛЮ ---
@@ -213,7 +213,6 @@ async def process_topic(message: Message, state: FSMContext, bot: Bot):
             # Отправляем сообщение напрямую пользователю по его ID
             await bot.send_message(chat_id=speaker_id, text=text_for_speaker, parse_mode="Markdown")
             text_for_admin += "\n\n🔔 Пользователь успешно уведомлен в ЛС!"
-            await state.clear()
             
         except TelegramForbiddenError:
             # Пользователь заблокировал бота или никогда его не запускал
@@ -225,7 +224,7 @@ async def process_topic(message: Message, state: FSMContext, bot: Bot):
             text_for_admin += f"\n\n⚠️ Ошибка отправки уведомления: {e}"
 
     # Отвечаем администратору
-    await message.answer(text, reply_markup=get_organizer_keyboard())
+    await message.answer(text_for_admin, reply_markup=get_organizer_keyboard())
     await state.clear()
 
 
