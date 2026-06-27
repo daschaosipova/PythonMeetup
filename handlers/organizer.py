@@ -241,16 +241,55 @@ async def set_speaker_start(message: Message, state: FSMContext):
 @router.message(OrganizerStates.waiting_for_speaker_id)
 async def set_speaker_finish(message: Message, state: FSMContext):
     # Проверяем, переслал ли админ сообщение или ввел ID текстом
-    if message.forward_from:
+    speaker_id = None
+
+    if message.forward_origin:
+        if hasattr(message.forward_origin, 'sender_user'):
+            speaker_id = message.forward_origin.sender_user.id
+        elif hasattr(message.forward_origin, 'user'):
+            speaker_id = message.forward_origin.user.id
+    elif message.forward_from:
         speaker_id = message.forward_from.id
-    else:
+
+    if not speaker_id:
         try:
             speaker_id = int(message.text)
-        except ValueError:
+        except (ValueError, TypeError):
             await message.answer("❌ Пожалуйста, введите корректный числовой ID.")
             return
 
+    if not db_manager.is_speaker_registered(speaker_id):
+        # Получаем список всех доступных спикеров для подсказки
+        speakers_list = db_manager.get_registered_speakers_list()
+        
+        if speakers_list:
+            speakers_text = "\n".join(
+                [f"• <b>{s['name']}</b> (ID: <code>{s['id']}</code>) — <i>«{s['topic']}»</i>" for s in speakers_list]
+            )
+            error_message = (
+                f"❌ Ошибка! ID <code>{speaker_id}</code> не найден в расписании докладов.\n\n"
+                f"<b>Доступные спикеры в базе:</b>\n{speakers_text}\n\n"
+                f"Скопируйте нужный ID или перешлите сообщение заново:"
+            )
+        else:
+            error_message = (
+                f"❌ Ошибка! ID <code>{speaker_id}</code> не найден в расписании.\n"
+                f"В базе данных пока вообще нет зарегистрированных докладов."
+            )
+            
+        await message.answer(error_message, parse_mode="HTML")
+        return
+
+    if not db_manager.is_speaker_registered(speaker_id):
+
+        await message.answer(
+            f"❌ Ошибка! Пользователь с ID {speaker_id} не найден в расписании докладов.\n"
+            f"Сначала добавьте его доклад в расписание, либо проверьте правильность ID."
+        )
+        return
+
     db_manager.set_speaker(user_id=speaker_id)
+    
     await message.answer(
         f"✅ Спикер с ID {speaker_id} успешно назначен на сцену!",
         reply_markup=get_organizer_keyboard()
