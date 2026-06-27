@@ -150,6 +150,20 @@ def is_speaker_registered(speaker_id: int) -> bool:
             return True
     return False
 
+def get_registered_speakers_list() -> list:
+    """Возвращает список словарей со спикерами из расписания докладов."""
+    db = read_db()
+    speakers = []
+    for talk in db.get("talks", []):
+        if talk.get("is_break"):
+            continue
+        speakers.append({
+            "id": talk.get("speaker_id"),
+            "name": talk.get("speaker_name", "Неизвестно"),
+            "topic": talk.get("topic", "Без темы")
+        })
+    return speakers
+
 def get_applications():
     db = read_db()
     applications = db.get("applications", [])
