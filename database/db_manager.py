@@ -9,7 +9,6 @@ def init_db():
         default_data = {
             "talks": [],
             "current_speaker_id": None,
-            "current_event_id": 1,
             "questions": [],
             "applications": [],
             "users": []
@@ -131,24 +130,11 @@ def clear_schedule():
     db["talks"] = []
     write_db(db)
 
-def set_speaker_by_talk_number(talk_number: int):
-    """Автоматически включает спикера на сцене по номеру доклада."""
-    db = read_db()
-    talks = db.get("talks", [])
-    
-    for talk in talks:
-        if talk["number"] == talk_number:
-            db["current_speaker_id"] = talk["speaker_id"]
-            db["current_event_id"] = talk_number
-            write_db(db)
-            return True
-    return False
 
-def set_speaker(user_id: int, event_id: int):
-    """Назначает активного спикера вручную и привязывает его к ID события."""
+def set_speaker(user_id: int):
+    """Назначает активного спикера по его ID."""
     db = read_db()
     db["current_speaker_id"] = user_id
-    db["current_event_id"] = event_id
     write_db(db)
 
 def get_current_speaker_id():
