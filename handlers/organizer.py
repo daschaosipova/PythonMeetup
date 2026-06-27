@@ -250,7 +250,7 @@ async def set_speaker_finish(message: Message, state: FSMContext):
             await message.answer("❌ Пожалуйста, введите корректный числовой ID.")
             return
 
-    db_manager.set_speaker(user_id=speaker_id, event_id=1)
+    db_manager.set_speaker(user_id=speaker_id)
     await message.answer(
         f"✅ Спикер с ID {speaker_id} успешно назначен на сцену!",
         reply_markup=get_organizer_keyboard()
