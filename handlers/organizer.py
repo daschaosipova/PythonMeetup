@@ -280,14 +280,6 @@ async def set_speaker_finish(message: Message, state: FSMContext):
         await message.answer(error_message, parse_mode="HTML")
         return
 
-    if not db_manager.is_speaker_registered(speaker_id):
-
-        await message.answer(
-            f"❌ Ошибка! Пользователь с ID {speaker_id} не найден в расписании докладов.\n"
-            f"Сначала добавьте его доклад в расписание, либо проверьте правильность ID."
-        )
-        return
-
     db_manager.set_speaker(user_id=speaker_id)
     
     await message.answer(
