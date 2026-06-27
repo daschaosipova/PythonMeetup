@@ -142,6 +142,14 @@ def get_current_speaker_id():
     db = read_db()
     return db.get("current_speaker_id")
 
+def is_speaker_registered(speaker_id: int) -> bool:
+    """Проверяет, зарегистрирован ли спикер с докладом в базе данных."""
+    db = read_db()
+    for talk in db.get("talks", []):
+        if talk.get("speaker_id") == speaker_id:
+            return True
+    return False
+
 def get_applications():
     db = read_db()
     applications = db.get("applications", [])
